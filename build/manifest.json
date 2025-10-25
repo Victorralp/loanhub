@@ -1,0 +1,25 @@
+{
+  "short_name": "LoanHub",
+  "name": "LoanHub - Modern Loan Management Platform",
+  "icons": [
+    {
+      "src": "loanhub-logo.png",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "loanhub-logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "loanhub-logo.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
