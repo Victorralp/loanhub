@@ -16,9 +16,9 @@ const Header = () => {
       <header className="border-b bg-gradient-to-r from-primary/10 via-primary/5 to-background backdrop-blur-md shadow-md">
         <div className="container flex items-center justify-between h-16 px-4">
           <Link to="/" className="flex items-center gap-2 text-xl font-bold text-foreground hover:opacity-90 transition-all">
-            <img src="/loanhub-logo.png" alt="LoanHub" className="h-8 w-8" />
+            <img src="/loanhub-logo.png" alt="Advance me" className="h-8 w-8" />
             <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              LoanHub
+              Advance me
             </span>
           </Link>
         </div>
@@ -30,9 +30,9 @@ const Header = () => {
     <header className="border-b bg-gradient-to-r from-primary/10 via-primary/5 to-background backdrop-blur-md shadow-md">
       <div className="container flex items-center justify-between h-16 px-4">
         <Link to="/" className="flex items-center gap-2 text-xl font-bold text-foreground hover:opacity-90 transition-all">
-          <img src="/loanhub-logo.png" alt="LoanHub" className="h-8 w-8" />
+          <img src="/loanhub-logo.png" alt="Advance me" className="h-8 w-8" />
           <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-            LoanHub
+            Advance me
           </span>
         </Link>
         <nav className="flex items-center gap-3">

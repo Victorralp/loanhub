@@ -24,9 +24,9 @@ const Index = () => {
       <section className="container px-4 pt-20 pb-16">
         <div className="max-w-4xl mx-auto text-center animate-in fade-in duration-700">
           <div className="flex items-center justify-center gap-3 mb-6">
-            <img src="/loanhub-logo.png" alt="LoanHub" className="h-16 w-16" />
+            <img src="/loanhub-logo.png" alt="Advance me" className="h-16 w-16" />
             <h1 className="text-5xl md:text-6xl font-bold text-foreground bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              LoanHub
+              Advance me
             </h1>
           </div>
           <Badge className="mb-4" variant="secondary">
@@ -269,10 +269,10 @@ const Index = () => {
       <footer className="container px-4 py-8 border-t">
         <div className="max-w-6xl mx-auto text-center text-sm text-muted-foreground">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <img src="/loanhub-logo.png" alt="LoanHub" className="h-5 w-5" />
-            <span className="font-semibold text-foreground">LoanHub</span>
+            <img src="/loanhub-logo.png" alt="Advance me" className="h-5 w-5" />
+            <span className="font-semibold text-foreground">Advance me</span>
           </div>
-          <p>© 2025 LoanHub. Built with modern technology for seamless loan processing.</p>
+          <p>© 2025 Advance me. Built with modern technology for seamless loan processing.</p>
         </div>
       </footer>
     </div>
