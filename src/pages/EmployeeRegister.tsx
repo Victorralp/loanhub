@@ -28,15 +28,45 @@ const EmployeeRegister = () => {
 
   useEffect(() => {
     const loadCompanies = async () => {
-      const snapshot = await getDocs(collection(db, "companies"));
-      const companyList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name
-      })) as Company[];
-      setCompanies(companyList);
+      try {
+        console.log("EmployeeRegister: Loading approved companies...");
+        const snapshot = await getDocs(collection(db, "companies"));
+        console.log("EmployeeRegister: Found", snapshot.docs.length, "total companies");
+        
+        // Filter only approved companies
+        const companyList = snapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          .filter((company: any) => company.status === "approved")
+          .map((company: any) => ({
+            id: company.id,
+            name: company.name
+          })) as Company[];
+          
+        console.log("EmployeeRegister: Found", companyList.length, "approved companies");
+        console.log("EmployeeRegister: Approved company list:", companyList);
+        setCompanies(companyList);
+        
+        if (companyList.length === 0) {
+          toast({
+            title: "No Approved Companies",
+            description: "No companies have been approved yet. Please register a company and wait for admin approval.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error loading companies:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load companies. Please try again.",
+          variant: "destructive",
+        });
+      }
     };
     loadCompanies();
-  }, []);
+  }, [toast]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +79,7 @@ const EmployeeRegister = () => {
         email,
         salary: parseFloat(salary),
         companyId,
+        status: "pending", // Employee needs company verification
         createdAt: new Date().toISOString(),
       });
 
@@ -120,21 +151,38 @@ const EmployeeRegister = () => {
             </div>
             <div>
               <Label htmlFor="company">Company</Label>
-              <Select value={companyId} onValueChange={setCompanyId} required>
+              <Select value={companyId} onValueChange={setCompanyId} required disabled={companies.length === 0}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a company" />
+                  <SelectValue placeholder={companies.length === 0 ? "No companies available" : "Select a company"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.name}
+                  {companies.length === 0 ? (
+                    <SelectItem value="no-companies" disabled>
+                      No companies registered yet
                     </SelectItem>
-                  ))}
+                  ) : (
+                    companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
+              {companies.length === 0 && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  No approved companies available. Companies need admin approval before employees can register.
+                  <br />
+                  Register a company at{" "}
+                  <Link to="/company/register" className="text-primary hover:underline">
+                    /company/register
+                  </Link>
+                  {" "}and wait for admin approval.
+                </p>
+              )}
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Registering..." : "Register"}
+            <Button type="submit" className="w-full" disabled={loading || companies.length === 0}>
+              {loading ? "Registering..." : companies.length === 0 ? "No Companies Available" : "Register"}
             </Button>
             <p className="text-sm text-center text-muted-foreground">
               Already have an account?{" "}

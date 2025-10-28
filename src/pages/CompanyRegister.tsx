@@ -16,9 +16,6 @@ const CompanyRegister = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [balance, setBalance] = useState("");
-  const [interestRate3, setInterestRate3] = useState("5");
-  const [interestRate6, setInterestRate6] = useState("7");
-  const [interestRate12, setInterestRate12] = useState("10");
   const [role, setRole] = useState<UserRole>("admin");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -35,11 +32,12 @@ const CompanyRegister = () => {
         email,
         balance: parseFloat(balance),
         interestRates: {
-          "3": parseFloat(interestRate3),
-          "6": parseFloat(interestRate6),
-          "12": parseFloat(interestRate12),
+          "3": 1,
+          "6": 1,
+          "12": 1,
         },
         role,
+        status: "pending", // Company needs admin approval
         createdAt: new Date().toISOString(),
       });
 
@@ -108,53 +106,6 @@ const CompanyRegister = () => {
                 onChange={(e) => setBalance(e.target.value)}
                 required
               />
-            </div>
-            <div>
-              <Label>Interest Rates by Repayment Term</Label>
-              <div className="grid grid-cols-3 gap-3 mt-2">
-                <div>
-                  <Label htmlFor="rate3" className="text-xs">3 Months (%)</Label>
-                  <Input
-                    id="rate3"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="50"
-                    value={interestRate3}
-                    onChange={(e) => setInterestRate3(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="rate6" className="text-xs">6 Months (%)</Label>
-                  <Input
-                    id="rate6"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="50"
-                    value={interestRate6}
-                    onChange={(e) => setInterestRate6(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="rate12" className="text-xs">12 Months (%)</Label>
-                  <Input
-                    id="rate12"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="50"
-                    value={interestRate12}
-                    onChange={(e) => setInterestRate12(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Set different rates for each repayment term (e.g., 5% for 3 months, 10% for 12 months)
-              </p>
             </div>
             <div>
               <Label htmlFor="role">Role</Label>

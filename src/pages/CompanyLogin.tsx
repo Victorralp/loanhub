@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
-import { auth } from "../lib/firebase";
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../lib/firebase";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -16,9 +17,24 @@ const CompanyLogin = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        navigate("/company/dashboard");
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+
+      try {
+        const companyDoc = await getDoc(doc(db, "companies", user.uid));
+        if (companyDoc.exists()) {
+          const companyData = companyDoc.data();
+          if (companyData.status === "approved") {
+            navigate("/company/dashboard");
+          } else {
+            await signOut(auth);
+          }
+        } else {
+          await signOut(auth);
+        }
+      } catch (error: any) {
+        console.error("Error verifying company:", error);
+        await signOut(auth);
       }
     });
     return () => unsubscribe();
@@ -29,15 +45,48 @@ const CompanyLogin = () => {
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const companyDoc = await getDoc(doc(db, "companies", credential.user.uid));
+
+      if (!companyDoc.exists()) {
+        await signOut(auth);
+        toast({
+          title: "Access Denied",
+          description: "Company account not found.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const companyData = companyDoc.data();
+      if (companyData.status === "pending") {
+        await signOut(auth);
+        toast({
+          title: "Account Pending",
+          description: "Your company account is pending admin approval. Please wait for approval.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (companyData.status === "rejected") {
+        await signOut(auth);
+        toast({
+          title: "Account Rejected",
+          description: "Your company account has been rejected. Please contact support.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
-        title: "Success",
-        description: "Logged in successfully",
+        title: "Welcome back",
+        description: "You are now logged in to your company account.",
       });
       navigate("/company/dashboard");
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: "Login Failed",
         description: error.message,
         variant: "destructive",
       });

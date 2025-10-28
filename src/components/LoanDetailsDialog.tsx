@@ -14,7 +14,7 @@ interface LoanDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   onApprove?: (loanId: string, notes?: string) => void;
   onReject?: (loanId: string, reason: string) => void;
-  userRole: "company" | "employee";
+  userRole: "company" | "employee" | "admin";
 }
 
 const LoanDetailsDialog = ({
@@ -175,7 +175,7 @@ const LoanDetailsDialog = ({
           )}
 
           {/* Action Buttons for Company */}
-          {userRole === "company" && loan.status === "pending" && (
+          {(userRole === "company" || userRole === "admin") && loan.status === "pending" && (
             <>
               <Separator />
               {!showRejectForm ? (

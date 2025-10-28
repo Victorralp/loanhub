@@ -1,4 +1,4 @@
-# 🏦 Advance me - Loan Management System
+# 🏦 AdvanceMe - Loan Management System
 
 A complete loan management application built with React, TypeScript, Firebase, and Tailwind CSS.
 

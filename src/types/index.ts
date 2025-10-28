@@ -10,12 +10,17 @@ export interface InterestRatesByTerm {
 
 // Company interface with role support
 export interface Company {
+  id?: string;
   name: string;
   email: string;
   balance: number;
   role?: UserRole; // admin, hr, manager
-  defaultInterestRate?: number; // Deprecated - kept for backward compatibility
-  interestRates?: InterestRatesByTerm; // Interest rates by term
+  interestRates?: InterestRatesByTerm; // Interest rates by term (managed by admin)
+  status?: "pending" | "approved" | "rejected"; // Company approval status
+  createdAt?: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
 }
 
 // Employee interface
@@ -26,6 +31,11 @@ export interface Employee {
   salary: number;
   companyId: string;
   role?: UserRole;
+  status?: "pending" | "verified" | "rejected"; // Employee verification status
+  createdAt?: string;
+  verifiedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
 }
 
 // Loan interface with enhanced fields
@@ -34,6 +44,7 @@ export interface Loan {
   employeeId: string;
   employeeName?: string;
   companyId: string;
+  companyName?: string;
   amount: number;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
@@ -54,10 +65,17 @@ export interface LoanComment {
   id: string;
   loanId: string;
   userId: string;
-  userRole: "company" | "employee";
+  userRole: "company" | "employee" | "admin";
   userName: string;
   comment: string;
   createdAt: string;
+}
+
+export interface Admin {
+  id?: string;
+  name: string;
+  email: string;
+  createdAt?: string;
 }
 
 // Permission interface for role-based access
