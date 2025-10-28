@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, collection, getDocs } from "firebase/firestore";
-import { auth, db } from "../lib/firebase";
+import { db } from "../lib/firebase";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { useToast } from "../hooks/use-toast";
+import { generateEmployeeId } from "../utils/employee-utils";
 
 interface Company {
   id: string;
@@ -18,7 +18,6 @@ interface Company {
 const EmployeeRegister = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [salary, setSalary] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -73,8 +72,14 @@ const EmployeeRegister = () => {
     setLoading(true);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "employees", userCredential.user.uid), {
+      // Generate unique employee ID
+      const employeeId = await generateEmployeeId();
+      
+      // Create a unique document ID for the employee
+      const employeeDocRef = doc(collection(db, "employees"));
+      
+      await setDoc(employeeDocRef, {
+        employeeId,
         name,
         email,
         salary: parseFloat(salary),
@@ -85,9 +90,13 @@ const EmployeeRegister = () => {
 
       toast({
         title: "Success",
-        description: "Employee registered successfully",
+        description: `Employee registered successfully! Your Employee ID is: ${employeeId}`,
       });
-      navigate("/employee/login");
+      
+      // Show the employee ID to the user before navigating
+      setTimeout(() => {
+        navigate("/employee/login");
+      }, 2000);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -125,16 +134,6 @@ const EmployeeRegister = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>

@@ -15,7 +15,6 @@ const CompanyRegister = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [balance, setBalance] = useState("");
   const [role, setRole] = useState<UserRole>("admin");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -30,7 +29,7 @@ const CompanyRegister = () => {
       await setDoc(doc(db, "companies", userCredential.user.uid), {
         name,
         email,
-        balance: parseFloat(balance),
+        balance: 0, // Initial balance set to 0, admin will update this
         interestRates: {
           "3": 1,
           "6": 1,
@@ -93,17 +92,6 @@ const CompanyRegister = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="balance">Balance</Label>
-              <Input
-                id="balance"
-                type="number"
-                step="0.01"
-                value={balance}
-                onChange={(e) => setBalance(e.target.value)}
                 required
               />
             </div>

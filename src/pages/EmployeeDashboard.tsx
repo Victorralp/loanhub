@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, query, where, getDocs, doc, getDoc, addDoc } from "firebase/firestore";
-import { auth, db } from "../lib/firebase";
+import { db } from "../lib/firebase";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -24,9 +23,9 @@ const EmployeeDashboard = () => {
   const [loanAmount, setLoanAmount] = useState("");
   const [loanPurpose, setLoanPurpose] = useState("");
   const [companyInterestRates, setCompanyInterestRates] = useState<InterestRatesByTerm>({
-    "3": 5,
-    "6": 7,
-    "12": 10
+    "3": 1,
+    "6": 1,
+    "12": 1
   });
   const [repaymentTerm, setRepaymentTerm] = useState<"3" | "6" | "12">("6");
   const [loading, setLoading] = useState(true);
@@ -36,49 +35,49 @@ const EmployeeDashboard = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
+    const loadEmployeeData = async () => {
+      // Get employee data from localStorage
+      const storedEmployee = localStorage.getItem("employee");
+      if (!storedEmployee) {
         navigate("/employee/login");
         return;
       }
 
       try {
-        const employeeDoc = await getDoc(doc(db, "employees", user.uid));
-        if (employeeDoc.exists()) {
-          const empData = employeeDoc.data() as EmployeeType;
-          setEmployee(empData);
-          
-          // Fetch company's interest rates
-          const companyDoc = await getDoc(doc(db, "companies", empData.companyId));
-          if (companyDoc.exists()) {
-            const companyData = companyDoc.data();
-            if (companyData.interestRates) {
-              setCompanyInterestRates(companyData.interestRates);
-            } else if (companyData.defaultInterestRate) {
-              // Backward compatibility
-              const rate = companyData.defaultInterestRate;
-              setCompanyInterestRates({
-                "3": rate,
-                "6": rate,
-                "12": rate
-              });
-            }
+        const employeeData: EmployeeType = JSON.parse(storedEmployee);
+        setEmployee(employeeData);
+        
+        // Fetch company's interest rates
+        const companyDoc = await getDoc(doc(db, "companies", employeeData.companyId));
+        if (companyDoc.exists()) {
+          const companyData = companyDoc.data();
+          if (companyData.interestRates) {
+            setCompanyInterestRates(companyData.interestRates);
+          } else if (companyData.defaultInterestRate) {
+            // Backward compatibility
+            const rate = companyData.defaultInterestRate;
+            setCompanyInterestRates({
+              "3": rate,
+              "6": rate,
+              "12": rate
+            });
           }
-          
-          await loadLoans(user.uid);
         }
+        
+        await loadLoans(employeeData.id);
       } catch (error: any) {
         toast({
           title: "Error",
           description: error.message,
           variant: "destructive",
         });
+        navigate("/employee/login");
       } finally {
         setLoading(false);
       }
-    });
+    };
 
-    return () => unsubscribe();
+    loadEmployeeData();
   }, [navigate, toast]);
 
   const loadLoans = async (employeeId: string) => {
@@ -121,7 +120,7 @@ const EmployeeDashboard = () => {
       const loanDetails = calculateLoanDetails(amount, rate, term);
 
       await addDoc(collection(db, "loans"), {
-        employeeId: auth.currentUser?.uid,
+        employeeId: employee.id,
         companyId: employee.companyId,
         amount,
         purpose: loanPurpose,
@@ -140,8 +139,8 @@ const EmployeeDashboard = () => {
       setLoanAmount("");
       setLoanPurpose("");
       setRepaymentTerm("6");
-      if (auth.currentUser) {
-        await loadLoans(auth.currentUser.uid);
+      if (employee) {
+        await loadLoans(employee.id);
       }
     } catch (error: any) {
       toast({
@@ -157,17 +156,9 @@ const EmployeeDashboard = () => {
     setDialogOpen(true);
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      navigate("/employee/login");
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+  const handleLogout = () => {
+    localStorage.removeItem("employee");
+    navigate("/employee/login");
   };
 
   if (loading) {
@@ -205,7 +196,7 @@ const EmployeeDashboard = () => {
         <div className="flex justify-between items-center mb-8 animate-in fade-in duration-500">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{employee?.name}</h1>
-            <p className="text-lg text-muted-foreground">Salary: ${employee?.salary.toFixed(2)}</p>
+            <p className="text-lg text-muted-foreground">Salary: ₦{employee?.salary.toFixed(2)}</p>
           </div>
           <Button onClick={handleLogout} variant="outline">Logout</Button>
         </div>
@@ -266,7 +257,7 @@ const EmployeeDashboard = () => {
             <CardContent>
               <form onSubmit={handleRequestLoan} className="space-y-4">
                 <div>
-                  <Label htmlFor="amount">Loan Amount (Max: ${employee?.salary.toFixed(2)})</Label>
+                  <Label htmlFor="amount">Loan Amount (Max: ₦{employee?.salary.toFixed(2)})</Label>
                   <Input
                     id="amount"
                     type="number"
@@ -315,20 +306,20 @@ const EmployeeDashboard = () => {
                       <h4 className="font-semibold mb-2">Loan Summary</h4>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Principal Amount:</span>
-                        <span className="font-medium">${parseFloat(loanAmount).toFixed(2)}</span>
+                        <span className="font-medium">₦{parseFloat(loanAmount).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Total Interest:</span>
-                        <span className="font-medium">${calculatedLoan.totalInterest.toFixed(2)}</span>
+                        <span className="font-medium">₦{calculatedLoan.totalInterest.toFixed(2)}</span>
                       </div>
                       <Separator />
                       <div className="flex justify-between text-base">
                         <span className="font-semibold">Total Amount:</span>
-                        <span className="font-bold">${calculatedLoan.totalAmount.toFixed(2)}</span>
+                        <span className="font-bold">₦{calculatedLoan.totalAmount.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Monthly Payment:</span>
-                        <span className="font-semibold text-primary">${calculatedLoan.monthlyPayment.toFixed(2)}</span>
+                        <span className="font-semibold text-primary">₦{calculatedLoan.monthlyPayment.toFixed(2)}</span>
                       </div>
                     </div>
                   </>
@@ -355,7 +346,7 @@ const EmployeeDashboard = () => {
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold">${loan.amount.toFixed(2)}</span>
+                          <span className="font-semibold">₦{loan.amount.toFixed(2)}</span>
                           <Badge
                             variant={
                               loan.status === "approved"

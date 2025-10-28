@@ -4,6 +4,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
@@ -24,6 +25,9 @@ import {
   CheckCircle,
   XCircle,
   Settings,
+  Edit3,
+  Save,
+  X,
 } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -36,6 +40,8 @@ const AdminDashboard = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedEmployeeForHistory, setSelectedEmployeeForHistory] = useState<Employee | null>(null);
   const [globalRateSettingsOpen, setGlobalRateSettingsOpen] = useState(false);
+  const [editingBalance, setEditingBalance] = useState<string | null>(null);
+  const [tempBalance, setTempBalance] = useState<string>("");
 
   const [companySearch, setCompanySearch] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
@@ -334,6 +340,50 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleEditBalance = (companyId: string, currentBalance: number) => {
+    setEditingBalance(companyId);
+    setTempBalance(currentBalance.toString());
+  };
+
+  const handleSaveBalance = async (companyId: string) => {
+    try {
+      const newBalance = parseFloat(tempBalance);
+      if (isNaN(newBalance) || newBalance < 0) {
+        toast({
+          title: "Invalid Balance",
+          description: "Please enter a valid positive number.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await updateDoc(doc(db, "companies", companyId), {
+        balance: newBalance,
+        updatedAt: new Date().toISOString(),
+      });
+
+      toast({
+        title: "Balance Updated",
+        description: "Company balance has been updated successfully.",
+      });
+      
+      setEditingBalance(null);
+      setTempBalance("");
+      await loadCompanies();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingBalance(null);
+    setTempBalance("");
+  };
+
   const handleViewLoan = (loan: Loan) => {
     setSelectedLoan(loan);
     setDialogOpen(true);
@@ -363,7 +413,7 @@ const AdminDashboard = () => {
   const filteredEmployees = useMemo(() => {
     if (!employeeSearch) return employees;
     return employees.filter((employee) => {
-      const haystack = `${employee.name} ${employee.email}`.toLowerCase();
+      const haystack = `${employee.name} ${employee.email} ${employee.employeeId || ""}`.toLowerCase();
       return haystack.includes(employeeSearch.toLowerCase());
     });
   }, [employees, employeeSearch]);
@@ -511,11 +561,50 @@ const AdminDashboard = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredCompanies.map((company) => (
-                    <TableRow key={company.id} className="hover:bg-muted/50 transition-colors">
+                    <TableRow key={company.id} className="hover:bg-muted/50 transition-colors group">
                       <TableCell className="font-medium">{company.name}</TableCell>
                       <TableCell>{company.email}</TableCell>
                       <TableCell className="font-semibold">
-                        ${company.balance?.toFixed?.(2) ?? company.balance}
+                        {editingBalance === company.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={tempBalance}
+                              onChange={(e) => setTempBalance(e.target.value)}
+                              className="w-24 h-8"
+                              autoFocus
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleSaveBalance(company.id!)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Save className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleCancelEdit}
+                              className="h-8 w-8 p-0"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span>₦{company.balance?.toFixed?.(2) ?? company.balance}</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditBalance(company.id!, company.balance || 0)}
+                              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Edit3 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -597,7 +686,7 @@ const AdminDashboard = () => {
             <SearchFilter
               searchTerm={employeeSearch}
               onSearchChange={setEmployeeSearch}
-              placeholder="Search employees by name or email..."
+              placeholder="Search employees by name, email, or employee ID..."
             />
             {filteredEmployees.length > 0 ? (
               <Table>
@@ -605,6 +694,7 @@ const AdminDashboard = () => {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Employee ID</TableHead>
                     <TableHead>Company</TableHead>
                     <TableHead>Salary</TableHead>
                     <TableHead>Actions</TableHead>
@@ -617,9 +707,12 @@ const AdminDashboard = () => {
                       <TableRow key={employee.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="font-medium">{employee.name}</TableCell>
                         <TableCell>{employee.email}</TableCell>
+                        <TableCell className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                          {employee.employeeId || "N/A"}
+                        </TableCell>
                         <TableCell>{company?.name ?? "Unknown"}</TableCell>
                         <TableCell className="font-semibold">
-                          ${employee.salary?.toFixed?.(2) ?? employee.salary}
+                          ₦{employee.salary?.toFixed?.(2) ?? employee.salary}
                         </TableCell>
                         <TableCell>
                           <Button
@@ -674,7 +767,7 @@ const AdminDashboard = () => {
                     <TableRow key={loan.id} className="hover:bg-muted/50 transition-colors">
                       <TableCell className="font-medium">{loan.employeeName ?? "Unknown"}</TableCell>
                       <TableCell>{loan.companyName ?? "Unknown"}</TableCell>
-                      <TableCell className="font-semibold">${loan.amount.toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold">₦{loan.amount.toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge
                           variant={

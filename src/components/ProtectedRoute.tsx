@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
+import { Employee } from "../types";
 
 type AllowedUserType = "company" | "employee" | "admin";
 
@@ -19,6 +20,43 @@ const ProtectedRoute = ({ children, redirectTo, userType }: ProtectedRouteProps)
 
   useEffect(() => {
     console.log("ProtectedRoute: Setting up auth listener for userType:", userType);
+    
+    // Handle employee authentication differently (localStorage-based)
+    if (userType === "employee") {
+      const checkEmployeeAuth = () => {
+        const storedEmployee = localStorage.getItem("employee");
+        if (storedEmployee) {
+          try {
+            const employeeData: Employee = JSON.parse(storedEmployee);
+            console.log("ProtectedRoute: Employee found in localStorage:", employeeData.employeeId);
+            
+            // Check if employee is verified
+            if (employeeData.status === "verified") {
+              setIsAuthenticated(true);
+              setHasAccess(true);
+            } else {
+              console.log("ProtectedRoute: Employee not verified, status:", employeeData.status);
+              setIsAuthenticated(false);
+              setHasAccess(false);
+            }
+          } catch (error) {
+            console.error("ProtectedRoute: Error parsing employee data:", error);
+            setIsAuthenticated(false);
+            setHasAccess(false);
+          }
+        } else {
+          console.log("ProtectedRoute: No employee found in localStorage");
+          setIsAuthenticated(false);
+          setHasAccess(false);
+        }
+        setLoading(false);
+      };
+      
+      checkEmployeeAuth();
+      return;
+    }
+
+    // Handle company and admin authentication with Firebase Auth
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log("ProtectedRoute: Auth state changed, user:", user ? user.uid : "null");
       
@@ -41,12 +79,7 @@ const ProtectedRoute = ({ children, redirectTo, userType }: ProtectedRouteProps)
 
       // Check if user exists in the correct collection
       try {
-        const collectionName =
-          userType === "company"
-            ? "companies"
-            : userType === "employee"
-            ? "employees"
-            : "admins";
+        const collectionName = userType === "company" ? "companies" : "admins";
         console.log("ProtectedRoute: Checking user in collection:", collectionName);
         const userDoc = await getDoc(doc(db, collectionName, user.uid));
         
@@ -99,8 +132,8 @@ const ProtectedRoute = ({ children, redirectTo, userType }: ProtectedRouteProps)
   if (!hasAccess) {
     // Redirect to appropriate dashboard based on attempted access
     const correctRoute = (() => {
-      if (userType === "company") return "/employee/dashboard";
-      if (userType === "employee") return "/company/dashboard";
+      if (userType === "company") return "/employee/login";
+      if (userType === "employee") return "/company/login";
       return "/";
     })();
     return <Navigate to={correctRoute} replace />;

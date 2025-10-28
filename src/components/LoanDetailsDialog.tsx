@@ -85,7 +85,7 @@ const LoanDetailsDialog = ({
             </div>
             <div>
               <Label className="text-muted-foreground">Requested Amount</Label>
-              <p className="font-medium text-lg">${loan.amount.toFixed(2)}</p>
+              <p className="font-medium text-lg">₦{loan.amount.toFixed(2)}</p>
             </div>
             <div>
               <Label className="text-muted-foreground">Request Date</Label>
@@ -121,13 +121,13 @@ const LoanDetailsDialog = ({
                   <div>
                     <Label className="text-muted-foreground">Total Amount</Label>
                     <p className="font-medium text-lg">
-                      ${loan.totalAmount?.toFixed(2)}
+                      ₦{loan.totalAmount?.toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Monthly Payment</Label>
                     <p className="font-medium text-lg">
-                      ${loan.monthlyPayment?.toFixed(2)}
+                      ₦{loan.monthlyPayment?.toFixed(2)}
                     </p>
                   </div>
                 </div>

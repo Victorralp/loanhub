@@ -100,7 +100,7 @@ const EmployeeLoanHistory = ({
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-lg">${loan.amount.toFixed(2)}</span>
+                    <span className="font-semibold text-lg">₦{loan.amount.toFixed(2)}</span>
                     <Badge
                       variant={
                         loan.status === "approved"
@@ -136,7 +136,7 @@ const EmployeeLoanHistory = ({
                   )}
                   {loan.totalAmount && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Total: ${loan.totalAmount.toFixed(2)} • Monthly: ${loan.monthlyPayment?.toFixed(2)}
+                      Total: ₦{loan.totalAmount.toFixed(2)} • Monthly: ₦{loan.monthlyPayment?.toFixed(2)}
                     </p>
                   )}
                 </div>

@@ -1,27 +1,25 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
-import { auth } from "../lib/firebase";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { useToast } from "../hooks/use-toast";
+import { validateEmployeeCredentials } from "../utils/employee-utils";
 
 const EmployeeLogin = () => {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        navigate("/employee/dashboard");
-      }
-    });
-    return () => unsubscribe();
+    // Check if employee is already logged in (stored in localStorage)
+    const loggedInEmployee = localStorage.getItem("employee");
+    if (loggedInEmployee) {
+      navigate("/employee/dashboard");
+    }
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -29,7 +27,29 @@ const EmployeeLogin = () => {
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const employee = await validateEmployeeCredentials(email, employeeId);
+      
+      if (!employee) {
+        toast({
+          title: "Invalid Credentials",
+          description: "Email or Employee ID is incorrect.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (employee.status !== "verified") {
+        toast({
+          title: "Account Not Verified",
+          description: "Your account is pending verification. Please contact your company admin.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Store employee data in localStorage for session management
+      localStorage.setItem("employee", JSON.stringify(employee));
+      
       toast({
         title: "Success",
         description: "Logged in successfully",
@@ -66,12 +86,13 @@ const EmployeeLogin = () => {
               />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="employeeId">Employee ID</Label>
               <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                id="employeeId"
+                type="text"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value.toUpperCase())}
+                placeholder="e.g., EMP001"
                 required
               />
             </div>

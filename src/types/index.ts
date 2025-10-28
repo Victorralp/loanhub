@@ -25,7 +25,8 @@ export interface Company {
 
 // Employee interface
 export interface Employee {
-  id: string;
+  id: string; // Firebase document ID
+  employeeId: string; // Generated employee ID (e.g., EMP001)
   name: string;
   email: string;
   salary: number;
