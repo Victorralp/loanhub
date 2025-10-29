@@ -9,6 +9,7 @@ interface SearchFilterProps {
   onFilterChange?: (value: string) => void;
   placeholder?: string;
   showStatusFilter?: boolean;
+  statusOptions?: { value: string; label: string }[];
 }
 
 const SearchFilter = ({
@@ -18,6 +19,7 @@ const SearchFilter = ({
   onFilterChange,
   placeholder = "Search...",
   showStatusFilter = false,
+  statusOptions,
 }: SearchFilterProps) => {
   return (
     <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -36,10 +38,14 @@ const SearchFilter = ({
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
+            {(statusOptions ?? [
+              { value: "all", label: "All Status" },
+              { value: "pending", label: "Pending" },
+              { value: "approved", label: "Approved" },
+              { value: "rejected", label: "Rejected" },
+            ]).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       )}
