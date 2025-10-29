@@ -1,41 +1,38 @@
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
 /**
- * Generates a unique employee ID in the format EMP001, EMP002, etc.
+ * Generates a unique employee ID in the format EMP-XXXXXX (timestamp + random)
  * @returns Promise<string> - The generated employee ID
  */
 export const generateEmployeeId = async (): Promise<string> => {
-  try {
-    // Get all employees ordered by employeeId descending to find the highest number
-    const employeesRef = collection(db, "employees");
-    const q = query(employeesRef, orderBy("employeeId", "desc"), limit(1));
-    const snapshot = await getDocs(q);
-    
-    if (snapshot.empty) {
-      // No employees exist yet, start with EMP001
-      return "EMP001";
+  const employeesRef = collection(db, "employees");
+
+  const createCandidate = () => {
+    const source = (
+      Date.now().toString(36) + Math.random().toString(36).slice(2)
+    )
+      .replace(/[^a-z0-9]/gi, "")
+      .toUpperCase();
+    const segment =
+      source.length >= 7 ? source.slice(-7) : source.padEnd(7, "X");
+    return `EMP-${segment}`;
+  };
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = createCandidate();
+    try {
+      const existing = await getDocs(query(employeesRef, where("employeeId", "==", candidate)));
+      if (existing.empty) {
+        return candidate;
+      }
+    } catch (error) {
+      console.error("Error checking employee ID uniqueness:", error);
+      // continue attempts, fallback handled below
     }
-    
-    const lastEmployee = snapshot.docs[0].data();
-    const lastEmployeeId = lastEmployee.employeeId;
-    
-    // Extract the number from the last employee ID
-    const match = lastEmployeeId.match(/EMP(\d+)/);
-    if (match) {
-      const lastNumber = parseInt(match[1], 10);
-      const nextNumber = lastNumber + 1;
-      return `EMP${nextNumber.toString().padStart(3, '0')}`;
-    }
-    
-    // If format doesn't match, start fresh
-    return "EMP001";
-  } catch (error) {
-    console.error("Error generating employee ID:", error);
-    // Fallback to timestamp-based ID if there's an error
-    const timestamp = Date.now().toString().slice(-6);
-    return `EMP${timestamp}`;
   }
+
+  throw new Error("Failed to generate a unique employee ID. Please try again.");
 };
 
 /**

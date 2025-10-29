@@ -13,6 +13,7 @@ export interface Company {
   id?: string;
   name: string;
   email: string;
+  companyCode?: string; // Generated company ID (e.g., COMP-A1B2C3)
   balance: number;
   role?: UserRole; // admin, hr, manager
   interestRates?: InterestRatesByTerm; // Interest rates by term (managed by admin)
@@ -26,7 +27,7 @@ export interface Company {
 // Employee interface
 export interface Employee {
   id: string; // Firebase document ID
-  employeeId: string; // Generated employee ID (e.g., EMP001)
+  employeeId: string; // Generated employee ID (e.g., EMP-A1B2C3)
   name: string;
   email: string;
   salary: number;

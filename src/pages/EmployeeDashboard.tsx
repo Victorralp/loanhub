@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, query, where, getDocs, doc, getDoc, addDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -14,7 +14,8 @@ import { Separator } from "../components/ui/separator";
 import { useToast } from "../hooks/use-toast";
 import { Loan, Employee as EmployeeType, calculateLoanDetails, InterestRatesByTerm } from "../types";
 import LoanDetailsDialog from "../components/LoanDetailsDialog";
-import { DollarSign, Clock, CheckCircle, XCircle, Eye } from "lucide-react";
+import { DollarSign, Clock, CheckCircle, XCircle, Eye, RefreshCw } from "lucide-react";
+import { generateEmployeeId } from "../utils/employee-utils";
 
 
 const EmployeeDashboard = () => {
@@ -31,6 +32,7 @@ const EmployeeDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [regeneratingId, setRegeneratingId] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -156,6 +158,35 @@ const EmployeeDashboard = () => {
     setDialogOpen(true);
   };
 
+  const handleRegenerateEmployeeId = async () => {
+    if (!employee) return;
+
+    setRegeneratingId(true);
+    try {
+      const newEmployeeId = await generateEmployeeId();
+      await updateDoc(doc(db, "employees", employee.id), {
+        employeeId: newEmployeeId,
+      });
+
+      const updatedEmployee = { ...employee, employeeId: newEmployeeId };
+      setEmployee(updatedEmployee);
+      localStorage.setItem("employee", JSON.stringify(updatedEmployee));
+
+      toast({
+        title: "Employee ID Updated",
+        description: `Your new employee ID is ${newEmployeeId}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setRegeneratingId(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("employee");
     navigate("/employee/login");
@@ -200,6 +231,32 @@ const EmployeeDashboard = () => {
           </div>
           <Button onClick={handleLogout} variant="outline">Logout</Button>
         </div>
+
+        {/* Employee ID Management */}
+        <Card className="mb-8 shadow-lg animate-in slide-in-from-bottom duration-700">
+          <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle>Employee ID</CardTitle>
+              <CardDescription>
+                Share this ID when your company needs to verify your account.
+              </CardDescription>
+            </div>
+            <div className="flex flex-col items-start gap-3 md:flex-row md:items-center">
+              <span className="font-mono text-lg bg-muted px-3 py-1 rounded-md">
+                {employee?.employeeId ?? "Not assigned"}
+              </span>
+              <Button
+                variant="outline"
+                onClick={handleRegenerateEmployeeId}
+                disabled={regeneratingId}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                {regeneratingId ? "Generating..." : "Generate New ID"}
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
 
         {/* Statistics Cards */}
         <div className="grid gap-6 md:grid-cols-4 mb-8 animate-in slide-in-from-bottom duration-700">

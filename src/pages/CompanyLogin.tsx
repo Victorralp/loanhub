@@ -1,43 +1,27 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../lib/firebase";
+import { db } from "../lib/firebase";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { useToast } from "../hooks/use-toast";
+import { validateCompanyCredentials } from "../utils/company-utils";
+import { Company } from "../types";
 
 const CompanyLogin = () => {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [companyCode, setCompanyCode] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) return;
-
-      try {
-        const companyDoc = await getDoc(doc(db, "companies", user.uid));
-        if (companyDoc.exists()) {
-          const companyData = companyDoc.data();
-          if (companyData.status === "approved") {
-            navigate("/company/dashboard");
-          } else {
-            await signOut(auth);
-          }
-        } else {
-          await signOut(auth);
-        }
-      } catch (error: any) {
-        console.error("Error verifying company:", error);
-        await signOut(auth);
-      }
-    });
-    return () => unsubscribe();
+    const storedCompany = localStorage.getItem("company");
+    if (storedCompany) {
+      navigate("/company/dashboard");
+    }
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -45,22 +29,24 @@ const CompanyLogin = () => {
     setLoading(true);
 
     try {
-      const credential = await signInWithEmailAndPassword(auth, email, password);
-      const companyDoc = await getDoc(doc(db, "companies", credential.user.uid));
+      const company = await validateCompanyCredentials(email, companyCode.toUpperCase());
 
-      if (!companyDoc.exists()) {
-        await signOut(auth);
+      if (!company) {
         toast({
           title: "Access Denied",
-          description: "Company account not found.",
+          description: "Company account not found. Please check your email and company ID.",
           variant: "destructive",
         });
         return;
       }
 
-      const companyData = companyDoc.data();
+      // Refresh company data to ensure latest status
+      const companyDoc = await getDoc(doc(db, "companies", company.id));
+      const companyData: Company = companyDoc.exists()
+        ? (companyDoc.data() as Company)
+        : company;
+
       if (companyData.status === "pending") {
-        await signOut(auth);
         toast({
           title: "Account Pending",
           description: "Your company account is pending admin approval. Please wait for approval.",
@@ -70,7 +56,6 @@ const CompanyLogin = () => {
       }
 
       if (companyData.status === "rejected") {
-        await signOut(auth);
         toast({
           title: "Account Rejected",
           description: "Your company account has been rejected. Please contact support.",
@@ -78,6 +63,12 @@ const CompanyLogin = () => {
         });
         return;
       }
+
+      const session = {
+        id: company.id,
+        ...companyData,
+      };
+      localStorage.setItem("company", JSON.stringify(session));
 
       toast({
         title: "Welcome back",
@@ -100,7 +91,7 @@ const CompanyLogin = () => {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader>
           <CardTitle>Company Login</CardTitle>
-          <CardDescription>Sign in to your company account</CardDescription>
+          <CardDescription>Sign in with your email and Company ID</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -115,12 +106,13 @@ const CompanyLogin = () => {
               />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="companyCode">Company ID</Label>
               <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                id="companyCode"
+                type="text"
+                value={companyCode}
+                onChange={(e) => setCompanyCode(e.target.value.toUpperCase())}
+                placeholder="e.g., COMP-A1B2C3"
                 required
               />
             </div>

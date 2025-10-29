@@ -92,7 +92,7 @@ const EmployeeLogin = () => {
                 type="text"
                 value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value.toUpperCase())}
-                placeholder="e.g., EMP001"
+                placeholder="e.g., EMP-A1B2C3"
                 required
               />
             </div>

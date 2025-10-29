@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
-import { auth, db } from "../lib/firebase";
+import { db } from "../lib/firebase";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
@@ -12,15 +11,17 @@ import { useToast } from "../hooks/use-toast";
 import { Company, Employee, Loan, UserRole, getPermissions } from "../types";
 import SearchFilter from "../components/SearchFilter";
 import EmployeeLoanHistory from "../components/EmployeeLoanHistory";
-import { CheckCircle, XCircle, Users, UserCheck, UserX, DollarSign, Clock, Eye } from "lucide-react";
+import { CheckCircle, XCircle, Users, UserCheck, UserX, DollarSign, Clock, Eye, RefreshCw } from "lucide-react";
+import { generateCompanyCode } from "../utils/company-utils";
 
 const CompanyDashboard = () => {
-  const [company, setCompany] = useState<Company | null>(null);
+  const [company, setCompany] = useState<(Company & { id: string }) | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole>("admin");
   const [selectedEmployeeForHistory, setSelectedEmployeeForHistory] = useState<Employee | null>(null);
+  const [generatingCompanyCode, setGeneratingCompanyCode] = useState(false);
   
   // Search states
   const [employeeSearch, setEmployeeSearch] = useState("");
@@ -33,27 +34,67 @@ const CompanyDashboard = () => {
   const permissions = getPermissions(userRole);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        navigate("/company/login");
-        return;
-      }
+    const storedCompany = localStorage.getItem("company");
+    if (!storedCompany) {
+      setLoading(false);
+      navigate("/company/login");
+      return;
+    }
 
+    let parsedCompany: (Company & { id: string }) | null = null;
+    try {
+      parsedCompany = JSON.parse(storedCompany);
+    } catch (error) {
+      console.error("CompanyDashboard: Failed to parse stored company", error);
+    }
+
+    if (!parsedCompany || !parsedCompany.id) {
+      localStorage.removeItem("company");
+      setLoading(false);
+      navigate("/company/login");
+      return;
+    }
+
+    const refreshCompanyData = async () => {
       try {
-        // Load company data
-        const companyDoc = await getDoc(doc(db, "companies", user.uid));
-        if (companyDoc.exists()) {
-          const companyData = companyDoc.data() as Company;
-          setCompany(companyData);
-          setUserRole(companyData.role || "admin");
-          await loadEmployees(user.uid);
-          await loadLoans(user.uid);
-        } else {
-          // Company not found or not approved
-          await signOut(auth);
+        const companyDoc = await getDoc(doc(db, "companies", parsedCompany!.id));
+        if (!companyDoc.exists()) {
+          localStorage.removeItem("company");
+          toast({
+            title: "Company not found",
+            description: "Your company record could not be located. Please register again.",
+            variant: "destructive",
+          });
           navigate("/company/login");
+          return;
         }
+
+        const rawData = companyDoc.data() as Company;
+        const companyData = {
+          id: companyDoc.id,
+          ...rawData,
+          companyCode: rawData.companyCode ?? parsedCompany!.companyCode,
+          email: rawData.email ?? parsedCompany!.email,
+        };
+
+        if (companyData.status !== "approved") {
+          localStorage.removeItem("company");
+          toast({
+            title: "Access pending",
+            description: "Your company account is not approved yet.",
+            variant: "destructive",
+          });
+          navigate("/company/login");
+          return;
+        }
+
+        setCompany(companyData);
+        setUserRole(companyData.role || "admin");
+        await loadEmployees(companyData.id);
+        await loadLoans(companyData.id);
+        localStorage.setItem("company", JSON.stringify(companyData));
       } catch (error: any) {
+        console.error("CompanyDashboard: Failed to load company", error);
         toast({
           title: "Error",
           description: error.message,
@@ -62,9 +103,9 @@ const CompanyDashboard = () => {
       } finally {
         setLoading(false);
       }
-    });
+    };
 
-    return () => unsubscribe();
+    refreshCompanyData();
   }, [navigate, toast]);
 
   const loadEmployees = async (companyId: string) => {
@@ -108,6 +149,42 @@ const CompanyDashboard = () => {
     }
   };
 
+  const handleGenerateCompanyCode = async () => {
+    if (!company?.id) {
+      toast({
+        title: "Error",
+        description: "Company session not found. Please log in again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingCompanyCode(true);
+    try {
+      const newCompanyCode = await generateCompanyCode();
+      await updateDoc(doc(db, "companies", company.id), {
+        companyCode: newCompanyCode,
+      });
+
+      const updatedCompany = { ...company, companyCode: newCompanyCode };
+      setCompany(updatedCompany);
+      localStorage.setItem("company", JSON.stringify(updatedCompany));
+
+      toast({
+        title: "Company ID Updated",
+        description: `Your new company ID is ${newCompanyCode}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingCompanyCode(false);
+    }
+  };
+
   const handleEmployeeVerify = async (employeeId: string) => {
     try {
       await updateDoc(doc(db, "employees", employeeId), {
@@ -120,9 +197,9 @@ const CompanyDashboard = () => {
         description: "Employee verified successfully",
       });
 
-      if (auth.currentUser) {
-        await loadEmployees(auth.currentUser.uid);
-        await loadLoans(auth.currentUser.uid);
+      if (company?.id) {
+        await loadEmployees(company.id);
+        await loadLoans(company.id);
       }
     } catch (error: any) {
       toast({
@@ -146,9 +223,9 @@ const CompanyDashboard = () => {
         description: "Employee rejected successfully",
       });
 
-      if (auth.currentUser) {
-        await loadEmployees(auth.currentUser.uid);
-        await loadLoans(auth.currentUser.uid);
+      if (company?.id) {
+        await loadEmployees(company.id);
+        await loadLoans(company.id);
       }
     } catch (error: any) {
       toast({
@@ -171,8 +248,8 @@ const CompanyDashboard = () => {
         description: "Loan approved successfully",
       });
 
-      if (auth.currentUser) {
-        await loadLoans(auth.currentUser.uid);
+      if (company?.id) {
+        await loadLoans(company.id);
       }
     } catch (error: any) {
       toast({
@@ -196,8 +273,8 @@ const CompanyDashboard = () => {
         description: "Loan rejected successfully",
       });
 
-      if (auth.currentUser) {
-        await loadLoans(auth.currentUser.uid);
+      if (company?.id) {
+        await loadLoans(company.id);
       }
     } catch (error: any) {
       toast({
@@ -209,17 +286,9 @@ const CompanyDashboard = () => {
   };
 
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      navigate("/company/login");
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+  const handleLogout = () => {
+    localStorage.removeItem("company");
+    navigate("/company/login");
   };
 
   if (loading) {
@@ -292,6 +361,37 @@ const CompanyDashboard = () => {
           </div>
           <Button onClick={handleLogout} variant="outline">Logout</Button>
         </div>
+        
+        {company && (
+          <Card className="mb-8 shadow-lg animate-in slide-in-from-bottom duration-700">
+            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <CardTitle>Company ID</CardTitle>
+                <CardDescription>
+                  Share this ID with employees so they can connect to your company.
+                </CardDescription>
+              </div>
+              <div className="flex flex-col items-start gap-3 md:flex-row md:items-center">
+                <span className="font-mono text-lg bg-muted px-3 py-1 rounded-md">
+                  {company.companyCode ?? "Not generated"}
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={handleGenerateCompanyCode}
+                  disabled={generatingCompanyCode}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  {generatingCompanyCode
+                    ? "Generating..."
+                    : company.companyCode
+                    ? "Generate New ID"
+                    : "Generate ID"}
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+        )}
         
         {/* Statistics Cards */}
         <div className="grid gap-6 md:grid-cols-6 mb-8 animate-in slide-in-from-bottom duration-700">
