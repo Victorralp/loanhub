@@ -54,7 +54,12 @@ const EmployeeDashboard = () => {
         if (companyDoc.exists()) {
           const companyData = companyDoc.data();
           if (companyData.interestRates) {
-            setCompanyInterestRates(companyData.interestRates);
+            const ir = companyData.interestRates as Partial<InterestRatesByTerm>;
+            setCompanyInterestRates({
+              "3": ir["3"] ?? 1,
+              "6": ir["6"] ?? 1,
+              "12": ir["12"] ?? 1,
+            });
           } else if (companyData.defaultInterestRate) {
             // Backward compatibility
             const rate = companyData.defaultInterestRate;
@@ -95,7 +100,7 @@ const EmployeeDashboard = () => {
   const handleRequestLoan = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = parseFloat(loanAmount);
-    const rate = companyInterestRates[repaymentTerm];
+    const rate = companyInterestRates[repaymentTerm] ?? 1;
     const term = parseInt(repaymentTerm);
 
     if (!employee) return;
@@ -214,7 +219,7 @@ const EmployeeDashboard = () => {
   const approvedLoans = loans.filter(loan => loan.status === "approved");
   const rejectedLoans = loans.filter(loan => loan.status === "rejected");
   
-  const currentRate = companyInterestRates[repaymentTerm];
+  const currentRate = companyInterestRates[repaymentTerm] ?? 1;
   const calculatedLoan = loanAmount ? calculateLoanDetails(
     parseFloat(loanAmount) || 0,
     currentRate,

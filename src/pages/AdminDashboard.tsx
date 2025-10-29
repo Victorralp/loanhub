@@ -199,6 +199,33 @@ const AdminDashboard = () => {
     return companyList;
   };
 
+  // Enforce default interest rates of 1% across all companies
+  const enforceDefaultInterestRates = async () => {
+    try {
+      console.log("AdminDashboard: Enforcing default interest rates (1%) for all companies");
+      const snapshot = await getDocs(collection(db, "companies"));
+      const updates = snapshot.docs.map(async (companyDoc) => {
+        const data = companyDoc.data() as Company;
+        const ir: any = data?.interestRates ?? {};
+        const rate3 = typeof ir?.["3"] === "number" ? ir["3"] : Number(ir?.["3"]);
+        const rate6 = typeof ir?.["6"] === "number" ? ir["6"] : Number(ir?.["6"]);
+        const rate12 = typeof ir?.["12"] === "number" ? ir["12"] : Number(ir?.["12"]);
+        const missingOrDifferent =
+          rate3 !== 1 || rate6 !== 1 || rate12 !== 1 || ir?.["3"] == null || ir?.["6"] == null || ir?.["12"] == null;
+        if (missingOrDifferent) {
+          await updateDoc(doc(db, "companies", companyDoc.id), {
+            interestRates: { "3": 1, "6": 1, "12": 1 },
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      });
+      await Promise.all(updates);
+      console.log("AdminDashboard: Default interest rates enforced where needed");
+    } catch (error) {
+      console.error("AdminDashboard: Failed enforcing default interest rates:", error);
+    }
+  };
+
   // Migration function to set status for existing companies
   const migrateCompanyStatus = async () => {
     try {
@@ -277,6 +304,9 @@ const AdminDashboard = () => {
       // First migrate company statuses for existing companies
       console.log("AdminDashboard: Running company migration");
       await migrateCompanyStatus();
+
+      // Ensure all companies have 1% interest rate by default
+      await enforceDefaultInterestRates();
       
       console.log("AdminDashboard: Loading companies and employees");
       const [companyList, employeeList] = await Promise.all([loadCompanies(), loadEmployees()]);
@@ -1166,21 +1196,9 @@ const AdminDashboard = () => {
                         </TableCell>
 
                         <TableCell>
-
-                          {company.interestRates ? (
-
-                            <span className="text-sm text-muted-foreground">
-
-                              Rates: 3m {company.interestRates["3"]}% | 6m {company.interestRates["6"]}% | 12m {company.interestRates["12"]}%
-
-                            </span>
-
-                          ) : (
-
-                            <span className="text-sm text-muted-foreground">Not configured</span>
-
-                          )}
-
+                          <span className="text-sm text-muted-foreground">
+                            Rates: 3m {company.interestRates?.["3"] ?? 1}% | 6m {company.interestRates?.["6"] ?? 1}% | 12m {company.interestRates?.["12"] ?? 1}%
+                          </span>
                         </TableCell>
 
                         <TableCell>
