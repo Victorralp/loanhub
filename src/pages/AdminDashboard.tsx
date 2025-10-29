@@ -28,7 +28,10 @@ import {
   Edit3,
   Save,
   X,
+  RefreshCw,
 } from "lucide-react";
+import { generateCompanyCode } from "../utils/company-utils";
+import { generateEmployeeId } from "../utils/employee-utils";
 
 const AdminDashboard = () => {
   const [admin, setAdmin] = useState<Admin | null>(null);
@@ -47,6 +50,8 @@ const AdminDashboard = () => {
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [loanSearch, setLoanSearch] = useState("");
   const [loanStatusFilter, setLoanStatusFilter] = useState("all");
+  const [generatingCompanyCodeId, setGeneratingCompanyCodeId] = useState<string | null>(null);
+  const [generatingEmployeeId, setGeneratingEmployeeId] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -384,9 +389,69 @@ const AdminDashboard = () => {
     setTempBalance("");
   };
 
+  const handleGenerateCompanyCode = async (companyId: string, existingCode?: string | null) => {
+    setGeneratingCompanyCodeId(companyId);
+    try {
+      const newCompanyCode = await generateCompanyCode();
+      await updateDoc(doc(db, "companies", companyId), {
+        companyCode: newCompanyCode,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setCompanies((prev) =>
+        prev.map((company) =>
+          company.id === companyId ? { ...company, companyCode: newCompanyCode } : company
+        )
+      );
+
+      toast({
+        title: existingCode ? "Company ID regenerated" : "Company ID generated",
+        description: `New Company ID: ${newCompanyCode}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingCompanyCodeId(null);
+    }
+  };
+
   const handleViewLoan = (loan: Loan) => {
     setSelectedLoan(loan);
     setDialogOpen(true);
+  };
+
+  const handleGenerateEmployeeId = async (employee: Employee) => {
+    setGeneratingEmployeeId(employee.id);
+    try {
+      const newEmployeeId = await generateEmployeeId();
+      await updateDoc(doc(db, "employees", employee.id), {
+        employeeId: newEmployeeId,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setEmployees((prev) =>
+        prev.map((item) =>
+          item.id === employee.id ? { ...item, employeeId: newEmployeeId } : item
+        )
+      );
+
+      toast({
+        title: employee.employeeId ? "Employee ID regenerated" : "Employee ID generated",
+        description: `New Employee ID: ${newEmployeeId}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingEmployeeId(null);
+    }
   };
 
   const handleLogout = async () => {
@@ -405,7 +470,7 @@ const AdminDashboard = () => {
   const filteredCompanies = useMemo(() => {
     if (!companySearch) return companies;
     return companies.filter((company) => {
-      const haystack = `${company.name} ${company.email}`.toLowerCase();
+      const haystack = `${company.name} ${company.email} ${company.companyCode || ""}`.toLowerCase();
       return haystack.includes(companySearch.toLowerCase());
     });
   }, [companies, companySearch]);
@@ -545,7 +610,7 @@ const AdminDashboard = () => {
             <SearchFilter
               searchTerm={companySearch}
               onSearchChange={setCompanySearch}
-              placeholder="Search companies by name or email..."
+              placeholder="Search companies by name, email, or company ID..."
             />
             {filteredCompanies.length > 0 ? (
               <Table>
@@ -553,6 +618,7 @@ const AdminDashboard = () => {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Company ID</TableHead>
                     <TableHead>Balance</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Interest Rates</TableHead>
@@ -564,6 +630,27 @@ const AdminDashboard = () => {
                     <TableRow key={company.id} className="hover:bg-muted/50 transition-colors group">
                       <TableCell className="font-medium">{company.name}</TableCell>
                       <TableCell>{company.email}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                            {company.companyCode ?? "Not generated"}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={() => handleGenerateCompanyCode(company.id!, company.companyCode)}
+                            disabled={generatingCompanyCodeId === company.id}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            {generatingCompanyCodeId === company.id
+                              ? "Generating..."
+                              : company.companyCode
+                              ? "Regenerate"
+                              : "Generate"}
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell className="font-semibold">
                         {editingBalance === company.id ? (
                           <div className="flex items-center gap-2">
@@ -707,8 +794,26 @@ const AdminDashboard = () => {
                       <TableRow key={employee.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="font-medium">{employee.name}</TableCell>
                         <TableCell>{employee.email}</TableCell>
-                        <TableCell className="font-mono text-sm bg-muted px-2 py-1 rounded">
-                          {employee.employeeId || "N/A"}
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                              {employee.employeeId || "Not generated"}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1"
+                              onClick={() => handleGenerateEmployeeId(employee)}
+                              disabled={generatingEmployeeId === employee.id}
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                              {generatingEmployeeId === employee.id
+                                ? "Generating..."
+                                : employee.employeeId
+                                ? "Regenerate"
+                                : "Generate"}
+                            </Button>
+                          </div>
                         </TableCell>
                         <TableCell>{company?.name ?? "Unknown"}</TableCell>
                         <TableCell className="font-semibold">
