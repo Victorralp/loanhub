@@ -1,24 +1,11 @@
 export const formatCurrency = (
   value: number | string | null | undefined,
-  currency: string = "NGN",
-  showSymbol: boolean = true
+  currency: string = "NGN"
 ): string => {
   const num = typeof value === "string" ? parseFloat(value) : value ?? 0;
   if (typeof num !== "number" || isNaN(num)) return "";
 
-  // If we don't want the symbol, return a plain fixed number string
-  if (!showSymbol) {
-    // Avoid Intl dependency for plain numbers
-    return Number(num).toFixed(2);
-  }
-
   try {
-    if (!showSymbol) {
-      return new Intl.NumberFormat("en-NG", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(num);
-    }
     return new Intl.NumberFormat("en-NG", {
       style: "currency",
       currency,
@@ -30,3 +17,4 @@ export const formatCurrency = (
     return `₦${Number(num).toFixed(2)}`;
   }
 };
+

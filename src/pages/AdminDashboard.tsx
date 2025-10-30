@@ -1150,7 +1150,7 @@ const AdminDashboard = () => {
 
                                 {"₦"}
 
-                                {formatCurrency(company.balance ?? 0)}
+                                {formatCurrency(company.balance ?? 0, "NGN", false)}
 
                               </span>
 
