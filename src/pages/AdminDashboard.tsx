@@ -22,6 +22,7 @@ import { useToast } from "../hooks/use-toast";
 import SearchFilter from "../components/SearchFilter";
 import LoanDetailsDialog from "../components/LoanDetailsDialog";
 import GlobalInterestRateSettings from "../components/GlobalInterestRateSettings";
+import { formatCurrency } from "../utils/format";
 import { Admin, Company, Employee, Loan } from "../types";
 import {
   Building2,
@@ -53,6 +54,7 @@ const AdminDashboard = () => {
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [globalRateSettingsOpen, setGlobalRateSettingsOpen] = useState(false);
+  const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
@@ -556,6 +558,17 @@ const AdminDashboard = () => {
   const handleCompanySelect = (companyId: string) => {
     setSelectedCompanyId(companyId);
     setEmployeeSearch("");
+    // Explicitly auto-select the first employee for this company
+    try {
+      const scoped = employees
+        .filter((e) => e.companyId === companyId)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      const firstId = scoped[0]?.id ?? null;
+      setSelectedEmployeeId(firstId);
+    } catch {
+      // no-op; fallback to effect-based selection
+    }
+    setCompanyDialogOpen(true);
   };
 
   const handleEmployeeSelect = (employeeId: string) => {
@@ -1137,7 +1150,7 @@ const AdminDashboard = () => {
 
                                 {"₦"}
 
-                                {company.balance?.toFixed?.(2) ?? company.balance}
+                                {formatCurrency(company.balance ?? 0)}
 
                               </span>
 
@@ -1292,7 +1305,7 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="shadow-lg animate-in slide-in-from-bottom duration-700">
+        <Card className="hidden">
 
           <CardHeader className="flex flex-col gap-2 pb-4 sm:flex-row sm:items-center sm:justify-between">
 
@@ -1544,7 +1557,7 @@ const AdminDashboard = () => {
 
 
 
-        <Card className="shadow-lg animate-in slide-in-from-bottom duration-700">
+        <Card className="hidden">
 
           <CardHeader className="pb-4">
 
@@ -1928,8 +1941,7 @@ const AdminDashboard = () => {
                       <TableCell className="font-medium">{loan.employeeName ?? "Unknown"}</TableCell>
                       <TableCell>{loan.companyName ?? "Unknown"}</TableCell>
                       <TableCell className="font-semibold">
-                        {"₦"}
-                        {loan.amount.toFixed(2)}
+                        {formatCurrency(loan.amount)}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -2047,6 +2059,277 @@ const AdminDashboard = () => {
         open={globalRateSettingsOpen}
         onOpenChange={setGlobalRateSettingsOpen}
       />
+
+      {/* Company Employees + Detail Dialog */}
+      <Dialog open={companyDialogOpen} onOpenChange={setCompanyDialogOpen}>
+        <DialogContent className="max-w-6xl w-[95vw] md:w-[90vw]">
+          <DialogHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogTitle>
+                  {selectedCompany ? `${selectedCompany.name} – Team` : "Employees"}
+                </DialogTitle>
+                <DialogDescription>
+                  Review employees for this company and see details for a selected employee.
+                </DialogDescription>
+              </div>
+              <div className="shrink-0">
+                <Button 
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => handleAddEmployeeDialogOpenChange(true)}
+                  disabled={!selectedCompany}
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Add Employee
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Employees list for selected company */}
+            <div className="space-y-3">
+              {selectedCompany ? (
+                <>
+                  <SearchFilter
+                    searchTerm={employeeSearch}
+                    onSearchChange={setEmployeeSearch}
+                    filterStatus={employeeStatusFilter}
+                    onFilterChange={setEmployeeStatusFilter}
+                    showStatusFilter
+                    statusOptions={[
+                      { value: "all", label: "All Status" },
+                      { value: "pending", label: "Pending" },
+                      { value: "verified", label: "Verified" },
+                      { value: "rejected", label: "Rejected" },
+                    ]}
+                    placeholder="Search employees by name, email, or employee ID..."
+                  />
+
+                  {employeesForSelectedCompany.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Employee ID</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {employeesForSelectedCompany.map((employee) => {
+                          const isSelectedEmployee = employee.id === selectedEmployeeId;
+                          return (
+                            <TableRow
+                              key={employee.id}
+                              className={`cursor-pointer transition-colors ${
+                                isSelectedEmployee ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/50"
+                              }`}
+                              onClick={() => handleEmployeeSelect(employee.id)}
+                            >
+                              <TableCell className="font-medium">{employee.name}</TableCell>
+                              <TableCell>{employee.email}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                                    {employee.employeeId || "Not generated"}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="gap-1"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      handleGenerateEmployeeId(employee);
+                                    }}
+                                    disabled={generatingEmployeeId === employee.id}
+                                  >
+                                    <RefreshCw className="h-4 w-4" />
+                                    {generatingEmployeeId === employee.id
+                                      ? "Generating..."
+                                      : employee.employeeId
+                                      ? "Regenerate"
+                                      : "Generate"}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    employee.status === "verified"
+                                      ? "default"
+                                      : employee.status === "rejected"
+                                      ? "destructive"
+                                      : "secondary"
+                                  }
+                                >
+                                  {employee.status || "pending"}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="py-8 text-center text-sm text-muted-foreground">
+                      No employees found for this company yet.
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  Select a company to view employees.
+                </div>
+              )}
+            </div>
+
+            {/* Selected employee detail */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Employee Detail</h3>
+                <p className="text-sm text-muted-foreground">
+                  {selectedEmployee
+                    ? `Profile snapshot for ${selectedEmployee.name}.`
+                    : "Select an employee from the list to view details."}
+                </p>
+              </div>
+
+              {selectedEmployee ? (
+                <>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="text-xl font-semibold text-foreground">{selectedEmployee.name}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Employee ID: <span className="font-mono">{selectedEmployee.employeeId || "Not generated"}</span>
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        selectedEmployee.status === "verified"
+                          ? "default"
+                          : selectedEmployee.status === "rejected"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                    >
+                      {selectedEmployee.status || "pending"}
+                    </Badge>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</p>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span>{selectedEmployee.email}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Salary</p>
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                        <span>{formatCurrency(selectedEmployee.salary ?? 0)}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Company</p>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Building2 className="h-4 w-4" />
+                        <span>{selectedCompany?.name ?? "Unknown company"}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Last Update</p>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <CalendarIcon className="h-4 w-4" />
+                        <span>
+                          {selectedEmployee.createdAt
+                            ? new Date(selectedEmployee.createdAt).toLocaleDateString()
+                            : "Not available"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-4">
+                    <div className="rounded-lg border bg-background p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Loans</p>
+                      <p className="mt-2 text-xl font-semibold text-foreground">{employeeLoanStats.total}</p>
+                    </div>
+                    <div className="rounded-lg border bg-background p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Approved</p>
+                      <p className="mt-2 text-xl font-semibold text-emerald-600">{employeeLoanStats.approved}</p>
+                    </div>
+                    <div className="rounded-lg border bg-background p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pending</p>
+                      <p className="mt-2 text-xl font-semibold text-amber-600">{employeeLoanStats.pending}</p>
+                    </div>
+                    <div className="rounded-lg border bg-background p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Requested</p>
+                      <p className="mt-2 text-xl font-semibold text-foreground">{formatCurrency(employeeLoanStats.totalAmount)}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Loan Timeline</h4>
+                      <span className="text-xs text-muted-foreground">
+                        {selectedEmployeeLoans.length} record{selectedEmployeeLoans.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    {selectedEmployeeLoans.length > 0 ? (
+                      selectedEmployeeLoans.map((loan) => (
+                        <div
+                          key={loan.id}
+                          className="flex flex-col gap-3 rounded-lg border bg-background p-4 transition-colors hover:border-primary/40 hover:bg-muted/40"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-semibold text-foreground">{formatCurrency(loan.amount)}</span>
+                              <Badge
+                                variant={
+                                  loan.status === "approved"
+                                    ? "default"
+                                    : loan.status === "rejected"
+                                    ? "destructive"
+                                    : "secondary"
+                                }
+                              >
+                                {loan.status}
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <CalendarIcon className="h-3.5 w-3.5" />
+                                {new Date(loan.createdAt).toLocaleDateString()}
+                              </span>
+                              {loan.repaymentTerm ? <span>{loan.repaymentTerm} months</span> : null}
+                              {loan.interestRate ? <span>{loan.interestRate}% interest</span> : null}
+                            </div>
+                            {loan.purpose ? (
+                              <p className="text-sm text-muted-foreground line-clamp-2">{loan.purpose}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-8 text-center text-sm text-muted-foreground">
+                        No loans recorded for this employee yet.
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  Select an employee from the list to view detail.
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

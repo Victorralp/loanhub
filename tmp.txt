@@ -1,0 +1,9 @@
+            {saving ? "Updating..." : "Update All Companies"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default GlobalInterestRateSettings;

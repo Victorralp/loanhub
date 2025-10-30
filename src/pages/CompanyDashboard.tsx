@@ -12,6 +12,7 @@ import { Company, Employee, Loan, UserRole, getPermissions } from "../types";
 import SearchFilter from "../components/SearchFilter";
 import EmployeeLoanHistory from "../components/EmployeeLoanHistory";
 import { CheckCircle, XCircle, Users, UserCheck, UserX, DollarSign, Clock, Eye, RefreshCw } from "lucide-react";
+import { formatCurrency } from "../utils/format";
 import { generateCompanyCode } from "../utils/company-utils";
 
 const CompanyDashboard = () => {
@@ -349,7 +350,7 @@ const CompanyDashboard = () => {
           <div>
             <h1 className="text-3xl font-bold text-foreground">{company?.name}</h1>
             <div className="flex items-center gap-4 mt-1 flex-wrap">
-              <p className="text-lg text-muted-foreground">Balance: ₦{company?.balance.toFixed(2)}</p>
+            <p className="text-lg text-muted-foreground">Balance: {formatCurrency(company?.balance ?? 0)}</p>
               <span className="text-muted-foreground">•</span>
               <p className="text-sm text-muted-foreground">
                 Rates: 3mo-{company?.interestRates?.["3"] || 1}% | 6mo-{company?.interestRates?.["6"] || 1}% | 12mo-{company?.interestRates?.["12"] || 1}%
@@ -497,7 +498,7 @@ const CompanyDashboard = () => {
                       <TableCell className="font-mono text-sm bg-muted px-2 py-1 rounded">
                         {employee.employeeId || "N/A"}
                       </TableCell>
-                      <TableCell className="font-semibold">₦{employee.salary.toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold">{formatCurrency(employee.salary)}</TableCell>
                       <TableCell>{new Date(employee.createdAt || "").toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
@@ -583,7 +584,7 @@ const CompanyDashboard = () => {
                         <TableCell className="font-medium">
                           {employee?.name || "Unknown Employee"}
                         </TableCell>
-                        <TableCell className="font-semibold">₦{loan.amount.toFixed(2)}</TableCell>
+                        <TableCell className="font-semibold">{formatCurrency(loan.amount)}</TableCell>
                         <TableCell className="max-w-[200px] truncate">
                           {loan.purpose || "No purpose specified"}
                         </TableCell>
@@ -699,7 +700,7 @@ const CompanyDashboard = () => {
                       <TableCell className="font-mono text-sm bg-muted px-2 py-1 rounded">
                         {employee.employeeId || "N/A"}
                       </TableCell>
-                      <TableCell className="font-semibold">₦{employee.salary.toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold">{formatCurrency(employee.salary)}</TableCell>
                       <TableCell>
                         <Badge
                           variant={

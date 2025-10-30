@@ -6,6 +6,7 @@ import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { Loan } from "../types";
+import { formatCurrency } from "../utils/format";
 import { format } from "date-fns";
 
 interface LoanDetailsDialogProps {
@@ -85,7 +86,7 @@ const LoanDetailsDialog = ({
             </div>
             <div>
               <Label className="text-muted-foreground">Requested Amount</Label>
-              <p className="font-medium text-lg">₦{loan.amount.toFixed(2)}</p>
+              <p className="font-medium text-lg">{formatCurrency(loan.amount)}</p>
             </div>
             <div>
               <Label className="text-muted-foreground">Request Date</Label>
@@ -120,15 +121,11 @@ const LoanDetailsDialog = ({
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Total Amount</Label>
-                    <p className="font-medium text-lg">
-                      ₦{loan.totalAmount?.toFixed(2)}
-                    </p>
+                    <p className="font-medium text-lg">{formatCurrency(loan.totalAmount ?? 0)}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Monthly Payment</Label>
-                    <p className="font-medium text-lg">
-                      ₦{loan.monthlyPayment?.toFixed(2)}
-                    </p>
+                    <p className="font-medium text-lg">{formatCurrency(loan.monthlyPayment ?? 0)}</p>
                   </div>
                 </div>
               </div>

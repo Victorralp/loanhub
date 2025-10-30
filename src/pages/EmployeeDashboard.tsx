@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { Button } from "../components/ui/button";
+import { formatCurrency } from "../utils/format";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
@@ -232,7 +233,7 @@ const EmployeeDashboard = () => {
         <div className="flex justify-between items-center mb-8 animate-in fade-in duration-500">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{employee?.name}</h1>
-            <p className="text-lg text-muted-foreground">Salary: ₦{employee?.salary.toFixed(2)}</p>
+            <p className="text-lg text-muted-foreground">Salary: {formatCurrency(employee?.salary ?? 0)}</p>
           </div>
           <Button onClick={handleLogout} variant="outline">Logout</Button>
         </div>
@@ -319,7 +320,7 @@ const EmployeeDashboard = () => {
             <CardContent>
               <form onSubmit={handleRequestLoan} className="space-y-4">
                 <div>
-                  <Label htmlFor="amount">Loan Amount (Max: ₦{employee?.salary.toFixed(2)})</Label>
+                  <Label htmlFor="amount">Loan Amount (Max: {formatCurrency(employee?.salary ?? 0)})</Label>
                   <Input
                     id="amount"
                     type="number"
@@ -368,20 +369,20 @@ const EmployeeDashboard = () => {
                       <h4 className="font-semibold mb-2">Loan Summary</h4>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Principal Amount:</span>
-                        <span className="font-medium">₦{parseFloat(loanAmount).toFixed(2)}</span>
+                        <span className="font-medium">{formatCurrency(parseFloat(loanAmount) || 0)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Total Interest:</span>
-                        <span className="font-medium">₦{calculatedLoan.totalInterest.toFixed(2)}</span>
+                        <span className="font-medium">{formatCurrency(calculatedLoan.totalInterest)}</span>
                       </div>
                       <Separator />
                       <div className="flex justify-between text-base">
                         <span className="font-semibold">Total Amount:</span>
-                        <span className="font-bold">₦{calculatedLoan.totalAmount.toFixed(2)}</span>
+                        <span className="font-bold">{formatCurrency(calculatedLoan.totalAmount)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Monthly Payment:</span>
-                        <span className="font-semibold text-primary">₦{calculatedLoan.monthlyPayment.toFixed(2)}</span>
+                        <span className="font-semibold text-primary">{formatCurrency(calculatedLoan.monthlyPayment)}</span>
                       </div>
                     </div>
                   </>
@@ -408,7 +409,7 @@ const EmployeeDashboard = () => {
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold">₦{loan.amount.toFixed(2)}</span>
+                          <span className="font-semibold">{formatCurrency(loan.amount)}</span>
                           <Badge
                             variant={
                               loan.status === "approved"
